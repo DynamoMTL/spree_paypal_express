@@ -91,7 +91,7 @@ CheckoutController.class_eval do
       @order.save
 
       if params[:express]
-        if requires_shipping_method?
+        if payment_method.preferred_no_shipping
           redirect_to paypal_confirm_order_checkout_path(@order, paypal_params)
         else
           redirect_to paypal_delivery_order_checkout_path(@order, paypal_params)
@@ -126,7 +126,7 @@ CheckoutController.class_eval do
 
     if @order.invalid? 
       redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
-    elsif requires_shipping_method? 
+    elsif !payment_method.preferred_no_shipping?
       @order.next! until @order.state == 'confirm'
 
       render 'shared/paypal_express_confirm'
@@ -386,10 +386,6 @@ CheckoutController.class_eval do
 
   def paypal_params 
     params.slice(:payment_method_id, :token, :PayerID)
-  end
-
-  def requires_shipping_method?
-    @order.shipping_method || @order.available_shipping_methods(:frontend).blank?
   end
 
 end

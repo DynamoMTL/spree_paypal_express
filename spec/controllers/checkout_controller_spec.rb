@@ -176,6 +176,35 @@ describe CheckoutController do
       end
     end
 
+    context "express checkout" do
+      let(:paypal_params) { {:PayerID=> "FWRVKNRRZ3WUC", :payment_method_id => 123, :token => "EC-2OPN7UJGFWK9OYFV"} } 
+      before do
+        paypal_gateway.stub(:preferred_review => false) 
+        paypal_gateway.provider.should_receive(:details_for).with(token).and_return(details_for_response)
+      end
+
+      context "shipping required" do
+        before do
+          paypal_gateway.stub(:preferred_no_shipping => false)
+          details_for_response.stub(:params => details_for_response.params.merge({'first_name' => 'Dr.', 'last_name' => 'Evil'}),
+          :address => {'address1' => 'Apt. 187', 'address2'=> 'Some Str.', 'city' => 'Chevy Chase', 'country' => 'US', 'zip' => '20815', 'state' => 'MD' })
+
+          get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC", :express => true }
+        end
+
+        specify { response.should redirect_to(paypal_delivery_order_checkout_path(order, paypal_params)) }
+      end
+
+      context "shipping is not required" do
+        before do
+          paypal_gateway.stub(:preferred_no_shipping => true) 
+          get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC", :express => true }
+        end
+
+        specify { response.should redirect_to(paypal_confirm_order_checkout_path(order, paypal_params)) }
+      end
+    end
+
   end
 
   context "paypal_finish" do
