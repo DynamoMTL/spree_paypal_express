@@ -20,6 +20,7 @@ en:
   payer_status: Status
   comment: Comment
   account_details: Account Details
+  paypal: PayPal
   finalize:
     paypalexpress: Capture Payment
   activerecord:
