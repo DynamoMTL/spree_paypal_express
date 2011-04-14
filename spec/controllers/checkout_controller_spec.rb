@@ -33,7 +33,39 @@ describe CheckoutController do
   end
 
   context "paypal_checkout" do
-    #feature not implemented
+    let(:redirect_url) { "https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=#{token}&useraction=commit" }
+    let(:return_url) { "http://test.host/orders/#{order.number}/checkout/paypal_callback?payment_method_id=123&express=1" }
+
+    context "without auto_capture" do
+      before { Spree::Config.set(:auto_capture => false) }
+
+      it "should setup an authorize transaction and redirect to sandbox" do
+        PaymentMethod.should_receive(:find).at_least(1).with('123').and_return(paypal_gateway)
+
+        gateway_provider.should_receive(:redirect_url_for).with(token, {:review => true}).and_return redirect_url
+        paypal_gateway.provider.should_receive(:setup_authorization).with(order_total, hash_including(:return_url => return_url)).and_return(mock(:success? => true, :token => token))
+
+        get :paypal_checkout, {:order_id => order.number, :payment_method_id => "123" }
+
+        response.should redirect_to "https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=#{assigns[:ppx_response].token}&useraction=commit"
+      end
+    end
+
+    context "with auto_capture" do
+      before { Spree::Config.set(:auto_capture => true) }
+
+      it "should setup a purchase transaction and redirect to sandbox" do
+        PaymentMethod.should_receive(:find).at_least(1).with("123").and_return(paypal_gateway)
+
+        gateway_provider.should_receive(:redirect_url_for).with(token, {:review => true}).and_return redirect_url
+        paypal_gateway.provider.should_receive(:setup_purchase).with(order_total, hash_including(:return_url => return_url)).and_return(mock(:success? => true, :token => token))
+
+        get :paypal_checkout, {:order_id => order.number, :payment_method_id => "123" }
+
+        response.should redirect_to "https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=#{assigns[:ppx_response].token}&useraction=commit"
+      end
+    end
+
   end
 
   context "paypal_payment without auto_capture" do

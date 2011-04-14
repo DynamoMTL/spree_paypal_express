@@ -4,7 +4,6 @@ CheckoutController.class_eval do
   def paypal_checkout
     load_order
     opts = all_opts(@order, params[:payment_method_id], 'checkout')
-    #opts.merge!(address_options(@order))
     @gateway = paypal_gateway
 
     if Spree::Config[:auto_capture]
@@ -91,12 +90,14 @@ CheckoutController.class_eval do
       end
       @order.save
 
-      if payment_method.preferred_review
+      if params[:express]
         if requires_shipping_method?
           redirect_to paypal_confirm_order_checkout_path(@order, paypal_params)
         else
           redirect_to paypal_delivery_order_checkout_path(@order, paypal_params)
         end
+      elsif payment_method.preferred_review
+        redirect_to paypal_confirm_order_checkout_path(@order, paypal_params)
       else
         paypal_finish
       end
@@ -276,7 +277,7 @@ CheckoutController.class_eval do
       credits_total = credits.map {|i| i[:amount] * i[:qty] }.sum
     end
 
-    opts = { :return_url        => request.protocol + request.host_with_port + "/orders/#{order.number}/checkout/paypal_callback?payment_method_id=#{payment_method}",
+    opts = { :return_url        => request.protocol + request.host_with_port + "/orders/#{order.number}/checkout/paypal_callback?payment_method_id=#{payment_method}#{'&express=1' if stage == 'checkout' }",
              :cancel_return_url => "http://"  + request.host_with_port + "/orders/#{order.number}/edit",
              :order_id          => order.number,
              :custom            => order.number,
