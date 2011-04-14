@@ -127,7 +127,7 @@ CheckoutController.class_eval do
     if @order.invalid? 
       redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
     elsif !payment_method.preferred_no_shipping
-      @order.next! until @order.state == 'confirm'
+      forward_order_to('confirm')
       @order.send :update_totals
 
       render 'shared/paypal_express_confirm'
@@ -176,11 +176,7 @@ CheckoutController.class_eval do
       end
 
       #need to force checkout to complete state
-      until @order.state == "complete"
-        if @order.next!
-          state_callback(:after)
-        end
-      end
+      forward_order_to('complete')
 
       redirect_to completion_route, :notice => I18n.t(:order_processed_successfully)
 
@@ -387,6 +383,14 @@ CheckoutController.class_eval do
 
   def paypal_params 
     params.slice(:payment_method_id, :token, :PayerID)
+  end
+
+  def forward_order_to(state)
+    until @order.state == state
+      if @order.next!
+        state_callback(:after)
+      end
+    end
   end
 
 end
