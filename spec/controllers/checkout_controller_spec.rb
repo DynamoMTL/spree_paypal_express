@@ -5,7 +5,7 @@ describe CheckoutController do
   let(:order) { Factory(:ppx_order_with_totals, :state => "payment") }
   let(:order_total) { (order.total * 100).to_i }
   let(:gateway_provider) { mock(ActiveMerchant::Billing::PaypalExpressGateway) }
-  let(:paypal_gateway) { mock(BillingIntegration::PaypalExpress, :id => 123, :preferred_review => false, :preferred_no_shipping => true, :provider => gateway_provider) }
+  let(:paypal_gateway) { mock(BillingIntegration::PaypalExpress, :id => 123, :preferred_review => false, :preferred_no_shipping => true, :provider => gateway_provider, :payment_profiles_supported? => true, :destroyed? => false, :new_record? => false) }
 
   let(:details_for_response) { mock(ActiveMerchant::Billing::PaypalExpressResponse, :success? => true,
           :params => {"payer" => order.user.email, "payer_id" => "FWRVKNRRZ3WUC"}, :address => {}) }
@@ -18,14 +18,18 @@ describe CheckoutController do
 
   before do
     Spree::Auth::Config.set(:registration_step => false)
+    Gateway.stub(:current => paypal_gateway)
     controller.stub(:current_order => order, :check_authorization => true, :current_user => order.user)
     order.stub(:checkout_allowed? => true, :completed? => false)
     order.update!
+    PaymentMethod.should_receive(:find).with(123, {:conditions => nil}).any_number_of_times.and_return(paypal_gateway)
   end
 
   it "should understand paypal routes" do
     assert_routing("/orders/#{order.number}/checkout/paypal_payment", {:controller => "checkout", :action => "paypal_payment", :order_id => order.number })
+    assert_routing("/orders/#{order.number}/checkout/paypal_callback", {:controller => "checkout", :action => "paypal_callback", :order_id => order.number })
     assert_routing("/orders/#{order.number}/checkout/paypal_confirm", {:controller => "checkout", :action => "paypal_confirm", :order_id => order.number })
+    assert_routing("/orders/#{order.number}/checkout/paypal_checkout", {:controller => "checkout", :action => "paypal_checkout", :order_id => order.number })
   end
 
   context "paypal_checkout" do
@@ -68,7 +72,7 @@ describe CheckoutController do
 
   end
 
-  context "paypal_confirm" do
+  context "paypal_callback" do
     before { PaymentMethod.should_receive(:find).at_least(1).with("123").and_return(paypal_gateway) }
 
     context "with auto_capture and no review" do
@@ -82,7 +86,7 @@ describe CheckoutController do
 
         paypal_gateway.provider.should_receive(:purchase).with(order_total, anything()).and_return(purchase_response)
 
-        get :paypal_confirm, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
+        get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
 
         response.should redirect_to order_url(order)
 
@@ -99,9 +103,9 @@ describe CheckoutController do
       it "should render review" do
         paypal_gateway.provider.should_receive(:details_for).with(token).and_return(details_for_response)
 
-        get :paypal_confirm, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
+        get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
 
-        response.should render_template("shared/paypal_express_confirm")
+        response.should redirect_to(paypal_confirm_order_checkout_path(:payment_method_id => '123', :token => token, :PayerID => "FWRVKNRRZ3WUC"))
 
       end
     end
@@ -119,14 +123,14 @@ describe CheckoutController do
       it "should update ship_address and render review" do
         paypal_gateway.provider.should_receive(:details_for).with(token).and_return(details_for_response)
 
-        get :paypal_confirm, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
+        get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
 
         order.ship_address.address1.should == "Apt. 187"
-        response.should render_template("shared/paypal_express_confirm")
+        response.should redirect_to(paypal_confirm_order_checkout_path(:payment_method_id => '123', :token => token, :PayerID => "FWRVKNRRZ3WUC"))
       end
     end
 
-    context "with un-successful repsonse" do
+    context "with un-successful response" do
       before { details_for_response.stub(:success? => false) }
 
       it "should log error and redirect to payment step" do
@@ -134,7 +138,7 @@ describe CheckoutController do
 
         controller.should_receive(:gateway_error).with(details_for_response)
 
-        get :paypal_confirm, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
+        get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
 
         response.should redirect_to edit_order_checkout_url(order, :state => 'payment')
       end
@@ -251,7 +255,7 @@ describe CheckoutController do
       opts[:handling].should == 0
       opts[:shipping].should == (order.ship_total * 100).to_i
 
-      opts[:return_url].should == paypal_confirm_order_checkout_url(order, :payment_method_id => paypal_gateway.id)
+      opts[:return_url].should == paypal_callback_order_checkout_url(order, :payment_method_id => paypal_gateway.id)
       opts[:cancel_return_url].should == edit_order_url(order)
 
       opts[:items].size.should > 0

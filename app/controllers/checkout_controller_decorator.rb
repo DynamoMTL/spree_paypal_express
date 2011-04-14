@@ -91,14 +91,10 @@ CheckoutController.class_eval do
       end
       @order.save
 
-      logger.info "Order saved"
-
       if payment_method.preferred_review
-      logger.info "Checking shipping method"
-        if @order.shipping_method
+        if requires_shipping_method?
           redirect_to paypal_confirm_order_checkout_path(@order, paypal_params)
         else
-          logger.info "redirecting to delivery step"
           redirect_to paypal_delivery_order_checkout_path(@order, paypal_params)
         end
       else
@@ -129,9 +125,8 @@ CheckoutController.class_eval do
 
     if @order.invalid? 
       redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
-    elsif @order.shipping_method || @order.available_shipping_methods(:frontend).blank?
+    elsif requires_shipping_method? 
       @order.next! until @order.state == 'confirm'
-      @order.update_totals
 
       render 'shared/paypal_express_confirm'
     else
@@ -185,8 +180,7 @@ CheckoutController.class_eval do
         end
       end
 
-      flash[:notice] = I18n.t(:order_processed_successfully)
-      redirect_to completion_route
+      redirect_to completion_route, :notice => I18n.t(:order_processed_successfully)
 
     else
       payment.fail!
@@ -382,7 +376,7 @@ CheckoutController.class_eval do
 
   # create the gateway from the supplied options
   def payment_method
-    PaymentMethod.find(params[:payment_method_id])
+    @payment_method ||= PaymentMethod.find(params[:payment_method_id])
   end
 
   def paypal_gateway
@@ -391,6 +385,10 @@ CheckoutController.class_eval do
 
   def paypal_params 
     params.slice(:payment_method_id, :token, :PayerID)
+  end
+
+  def requires_shipping_method?
+    @order.shipping_method || @order.available_shipping_methods(:frontend).blank?
   end
 
 end
