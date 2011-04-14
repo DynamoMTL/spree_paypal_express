@@ -225,7 +225,7 @@ CheckoutController.class_eval do
     { :description             => "Goods from #{Spree::Config[:site_name]}", # site details...
 
       #:page_style             => "foobar", # merchant account can set named config
-      :header_image            => "https://#{Spree::Config[:site_name]}/images/logo.png",
+      :header_image            => "https://#{Spree::Config[:site_url]}/images/logo.png",
       :background_color        => "ffffff",  # must be hex only, six chars
       :header_background_color => "ffffff",
       :header_border_color     => "ffffff",
