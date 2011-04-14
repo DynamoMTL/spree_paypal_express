@@ -4,7 +4,7 @@ CheckoutController.class_eval do
   def paypal_checkout
     load_order
     opts = all_opts(@order, params[:payment_method_id], 'checkout')
-    opts.merge!(address_options(@order))
+    #opts.merge!(address_options(@order))
     @gateway = paypal_gateway
 
     if Spree::Config[:auto_capture]
@@ -19,7 +19,7 @@ CheckoutController.class_eval do
       return
     end
 
-    redirect_to (@gateway.redirect_url_for response.token, :review => payment_method.preferred_review)
+    redirect_to (@gateway.redirect_url_for @ppx_response.token, :review => true)
   rescue ActiveMerchant::ConnectionError => e
     gateway_error I18n.t(:unable_to_connect_to_gateway)
     redirect_to :back
@@ -49,7 +49,7 @@ CheckoutController.class_eval do
     redirect_to :back
   end
 
-  def paypal_confirm
+  def paypal_callback
     load_order
 
     opts = { :token => params[:token], :payer_id => params[:PayerID] }.merge all_opts(@order, params[:payment_method_id],  'payment')
@@ -91,8 +91,16 @@ CheckoutController.class_eval do
       end
       @order.save
 
+      logger.info "Order saved"
+
       if payment_method.preferred_review
-        render 'shared/paypal_express_confirm', :layout => 'spree_application'
+      logger.info "Checking shipping method"
+        if @order.shipping_method
+          redirect_to paypal_confirm_order_checkout_path(@order, paypal_params)
+        else
+          logger.info "redirecting to delivery step"
+          redirect_to paypal_delivery_order_checkout_path(@order, paypal_params)
+        end
       else
         paypal_finish
       end
@@ -106,6 +114,29 @@ CheckoutController.class_eval do
   rescue ActiveMerchant::ConnectionError => e
     gateway_error I18n.t(:unable_to_connect_to_gateway)
     redirect_to edit_order_url(@order)
+  end
+
+  def paypal_delivery
+    load_order
+
+    render 'shared/paypal_express_delivery_options'
+  end
+
+  def paypal_confirm
+    load_order
+    
+    @order.update_attributes(params[:order])
+
+    if @order.invalid? 
+      redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
+    elsif @order.shipping_method || @order.available_shipping_methods(:frontend).blank?
+      @order.next! until @order.state == 'confirm'
+      @order.update_totals
+
+      render 'shared/paypal_express_confirm'
+    else
+      redirect_to :action => 'paypal_delivery', :notice => t(:shipping_method_is_required)
+    end
   end
 
   def paypal_finish
@@ -251,7 +282,7 @@ CheckoutController.class_eval do
       credits_total = credits.map {|i| i[:amount] * i[:qty] }.sum
     end
 
-    opts = { :return_url        => request.protocol + request.host_with_port + "/orders/#{order.number}/checkout/paypal_confirm?payment_method_id=#{payment_method}",
+    opts = { :return_url        => request.protocol + request.host_with_port + "/orders/#{order.number}/checkout/paypal_callback?payment_method_id=#{payment_method}",
              :cancel_return_url => "http://"  + request.host_with_port + "/orders/#{order.number}/edit",
              :order_id          => order.number,
              :custom            => order.number,
@@ -356,6 +387,10 @@ CheckoutController.class_eval do
 
   def paypal_gateway
     payment_method.provider
+  end
+
+  def paypal_params 
+    params.slice(:payment_method_id, :token, :PayerID)
   end
 
 end

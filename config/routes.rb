@@ -4,7 +4,11 @@ Rails.application.routes.draw do
       member do
         get :paypal_checkout
         get :paypal_payment
+        get :paypal_callback
+        get :paypal_delivery
         get :paypal_confirm
+        post :paypal_confirm
+        #match '/paypal_confirm' => 'checkout#paypal_confirm', :via => [:get, :post]
         post :paypal_finish
       end
     end

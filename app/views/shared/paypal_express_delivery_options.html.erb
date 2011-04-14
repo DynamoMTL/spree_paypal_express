@@ -1,0 +1,31 @@
+<%= form_for @order, :url => paypal_confirm_order_checkout_url(@order), :html => {:method => :get} do |form| %>
+  <%= hidden_field_tag :token, params[:token] %>
+  <%= hidden_field_tag :PayerID, params[:PayerID] %>
+  <%= hidden_field_tag :payment_method_id, params[:payment_method_id] %>
+<fieldset id='shipping_method'>
+  <legend><%= t("shipping_method") %></legend>
+  <div class="inner">
+    <div id="methods">
+      <p class="field radios">
+      <% @order.rate_hash.each do |shipping_method| %>
+        <label>
+          <%= radio_button(:order, :shipping_method_id, shipping_method[:id]) %>
+          <%= shipping_method[:name] %> <%= number_to_currency shipping_method[:cost] %>
+        </label><br />
+      <% end %>
+      </p>
+    </div>
+    <% if Spree::Config[:shipping_instructions] && @order.rate_hash.present? %>
+      <p id="minstrs">
+      <%= form.label :special_instructions, t("shipping_instructions") %><br />
+      <%= form.text_area :special_instructions, :cols => 40, :rows => 7 %>
+      </p>
+    <% end %>
+  </div>
+</fieldset>
+
+<div class="form-buttons">
+  <input type="submit" class="continue button primary" value="<%=t("save_and_continue") %>"/>
+</div>
+
+<% end %>
