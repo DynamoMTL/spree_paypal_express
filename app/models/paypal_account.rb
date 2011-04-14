@@ -25,9 +25,9 @@ class PaypalAccount < ActiveRecord::Base
   def credit(payment, amount=nil)
     authorization = find_capture(payment)
 
-    amount = payment.credit_allowed >= payment.order.outstanding_balance.abs ? payment.order.outstanding_balance : payment.credit_allowed
+    amount = payment.credit_allowed >= payment.order.outstanding_balance.abs ? payment.order.outstanding_balance.abs : payment.credit_allowed
 
-    ppx_response = payment.payment_method.provider.credit(amount.nil? ? (100 * amount).to_i : (100 * amount).to_i, authorization.params['transaction_id'])
+    ppx_response = payment.payment_method.provider.credit((100 * amount).to_i, authorization.params['transaction_id'])
 
     if ppx_response.success?
       record_log payment, ppx_response
