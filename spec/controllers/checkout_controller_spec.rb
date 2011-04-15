@@ -149,15 +149,26 @@ describe CheckoutController do
 
         details_for_response.stub(:params => details_for_response.params.merge({'first_name' => 'Dr.', 'last_name' => 'Evil'}),
           :address => {'address1' => 'Apt. 187', 'address2'=> 'Some Str.', 'city' => 'Chevy Chase', 'country' => 'US', 'zip' => '20815', 'state' => 'MD' })
-
       end
 
-      it "should update ship_address and render review" do
+      it "should update ship_address and confirm" do
+        order.should_receive(:bill_address).and_return(mock_model(Address))
+        order.should_not_receive(:bill_address=)
         paypal_gateway.provider.should_receive(:details_for).with(token).and_return(details_for_response)
 
         get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
 
         order.ship_address.address1.should == "Apt. 187"
+        response.should redirect_to(paypal_confirm_order_checkout_path(:payment_method_id => '123', :token => token, :PayerID => "FWRVKNRRZ3WUC"))
+      end
+
+      it "should set bill address when its empty" do
+        order.update_attribute :bill_address, nil
+        paypal_gateway.provider.should_receive(:details_for).with(token).and_return(details_for_response)
+
+        get :paypal_callback, {:order_id => order.number, :payment_method_id => "123", :token => token, :PayerID => "FWRVKNRRZ3WUC" }
+
+        order.bill_address.address1.should == "Apt. 187"
         response.should redirect_to(paypal_confirm_order_checkout_path(:payment_method_id => '123', :token => token, :PayerID => "FWRVKNRRZ3WUC"))
       end
     end
