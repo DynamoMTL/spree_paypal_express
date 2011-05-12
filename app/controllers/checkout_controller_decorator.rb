@@ -1,6 +1,6 @@
 CheckoutController.class_eval do
   before_filter :redirect_to_paypal_express_form_if_needed, :only => [:update]
-  skip_before_filter :check_registration, :only => %w(paypal_checkout paypal_callback paypal_delivery)
+  skip_before_filter :check_registration, :only => %w(paypal_checkout paypal_callback paypal_delivery paypal_confirm paypal_finish)
 
   def paypal_checkout
     load_order
