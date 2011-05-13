@@ -66,6 +66,7 @@ CheckoutController.class_eval do
                            :payer_status => @ppx_details.params["payer_status"])
 
       @order.special_instructions = @ppx_details.params["note"]
+      @order.email = @ppx_details.params['payer'] unless @order.email.present
 
       unless payment_method.preferred_no_shipping
         ship_address = @ppx_details.address
@@ -90,7 +91,7 @@ CheckoutController.class_eval do
         @order.ship_address = order_ship_address
         @order.bill_address = order_ship_address unless @order.bill_address
       end
-      @order.save
+      @order.save!
 
       if params[:express]
         if payment_method.preferred_no_shipping
