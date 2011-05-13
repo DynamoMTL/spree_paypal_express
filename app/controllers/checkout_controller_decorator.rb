@@ -130,7 +130,7 @@ CheckoutController.class_eval do
     if @order.invalid? 
       redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
     elsif !payment_method.preferred_no_shipping
-      forward_order_to('confirm')
+      forward_order_to('payment')
       @order.send :update_totals
 
       render 'shared/paypal_express_confirm'
