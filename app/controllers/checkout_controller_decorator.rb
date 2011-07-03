@@ -281,7 +281,7 @@ CheckoutController.class_eval do
              :cancel_return_url => "http://"  + request.host_with_port + "/orders/#{order.number}/edit",
              :order_id          => order.number,
              :custom            => order.number,
-             :currency          => payment_method.preferred_currency_code,
+             :currency          => PaymentMethod.find(payment_method).preferred_currency_code,
              :items             => items,
              :subtotal          => ((order.item_total * 100) + credits_total).to_i,
              :tax               => ((order.adjustments.map { |a| a.amount if ( a.source_type == 'Order' && a.label == 'Tax') }.compact.sum) * 100 ).to_i,
@@ -398,4 +398,5 @@ CheckoutController.class_eval do
   end
 
 end
+
 
