@@ -228,7 +228,7 @@ CheckoutController.class_eval do
       #:page_style             => "foobar", # merchant account can set named config
       :header_image            => "https://#{Spree::Config[:site_url]}#{Spree::Config[:logo]}",
       :background_color        => "ffffff",  # must be hex only, six chars
-      :header_background_color => "ffffff",
+      :header_background_color => "#{Spree::Config[:ppx_header_background_color]}",
       :header_border_color     => "ffffff",
       :allow_note              => true,
       :locale                  => Spree::Config[:default_locale],
