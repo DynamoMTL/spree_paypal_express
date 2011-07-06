@@ -252,7 +252,7 @@ CheckoutController.class_eval do
       { :name        => item.variant.product.name,
         :description => item.variant.product.description[0..120],
         :sku         => item.variant.sku,
-        :qty         => item.quantity,
+        :quantity    => item.quantity,
         :amount      => price,
         :weight      => item.variant.weight,
         :height      => item.variant.height,
@@ -265,7 +265,7 @@ CheckoutController.class_eval do
         { :name        => credit.label,
           :description => credit.label,
           :sku         => credit.id,
-          :qty         => 1,
+          :quantity    => 1,
           :amount      => (credit.amount*100).to_i }
       end
     end
@@ -274,7 +274,7 @@ CheckoutController.class_eval do
     credits.compact!
     if credits.present?
       items.concat credits
-      credits_total = credits.map {|i| i[:amount] * i[:qty] }.sum
+      credits_total = credits.map {|i| i[:amount] * i[:quantity] }.sum
     end
 
     opts = { :return_url        => request.protocol + request.host_with_port + "/orders/#{order.number}/checkout/paypal_callback?payment_method_id=#{payment_method}#{'&express=1' if stage == 'checkout' }",
@@ -392,6 +392,7 @@ CheckoutController.class_eval do
   def forward_order_to(state)
     until @order.state == state
       if @order.next!
+        @order.update!
         state_callback(:after)
       end
     end
