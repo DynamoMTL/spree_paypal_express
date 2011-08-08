@@ -118,6 +118,7 @@ CheckoutController.class_eval do
 
   def paypal_delivery
     load_order
+    before_delivery
 
     render 'shared/paypal_express_delivery_options'
   end
