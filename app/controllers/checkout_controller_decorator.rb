@@ -393,7 +393,6 @@ CheckoutController.class_eval do
   def forward_order_to(state)
     until @order.state == state
       if @order.next!
-        @order.update!
         state_callback(:after)
       end
     end
