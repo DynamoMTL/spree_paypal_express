@@ -125,10 +125,10 @@ CheckoutController.class_eval do
 
   def paypal_confirm
     load_order
-    
+
     @order.update_attributes(params[:order])
 
-    if @order.invalid? 
+    if @order.invalid?
       redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
     elsif !payment_method.preferred_no_shipping
       forward_order_to('payment')
@@ -185,7 +185,7 @@ CheckoutController.class_eval do
       redirect_to completion_route, :notice => I18n.t(:order_processed_successfully)
 
     else
-      payment.fail!
+      payment.failure!
       order_params = {}
       gateway_error(ppx_auth_response)
 
@@ -325,7 +325,7 @@ CheckoutController.class_eval do
       }
     end
   end
-  
+
   def all_opts(order, payment_method, stage=nil)
     opts = fixed_opts.merge(order_opts(order, payment_method, stage)).merge(paypal_site_opts)
 
@@ -386,7 +386,7 @@ CheckoutController.class_eval do
     payment_method.provider
   end
 
-  def paypal_params 
+  def paypal_params
     params.slice(:payment_method_id, :token, :PayerID)
   end
 
