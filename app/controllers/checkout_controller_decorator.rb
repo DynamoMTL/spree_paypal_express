@@ -86,7 +86,14 @@ CheckoutController.class_eval do
           order_ship_address.state_name = ship_address["state"]
         end
 
-        order_ship_address.save!
+        # Custom code for the Yellow Bird Project to determine why validation errors
+        # occur, specifically on state, when saving the ship address
+        #
+        begin
+          order_ship_address.save!
+        rescue ActiveRecord::RecordInvalid => e
+          Airbrake.notify(e, :parameters => @ppx_details)
+        end
 
         @order.ship_address = order_ship_address
         @order.bill_address = order_ship_address unless @order.bill_address
