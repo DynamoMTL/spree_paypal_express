@@ -21,6 +21,8 @@ class PaypalExpressCallbacksController < Spree::BaseController
 
         when "Completed"
           @payment.complete!
+        else
+          @payment.pend!
       end
 
     end
