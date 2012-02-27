@@ -6,7 +6,7 @@ CheckoutController.class_eval do
     load_order
     opts = all_opts(@order, params[:payment_method_id], 'checkout')
     @gateway = paypal_gateway
-
+    reset_order_state('cart')
     if Spree::Config[:auto_capture]
       @ppx_response = @gateway.setup_purchase(opts[:money], opts)
     else
@@ -27,10 +27,12 @@ CheckoutController.class_eval do
 
   def paypal_payment
     load_order
+    # Remove all other payments
+    @order.payments.clear
     opts = all_opts(@order,params[:payment_method_id], 'payment')
     opts.merge!(address_options(@order))
     @gateway = paypal_gateway
-
+    reset_order_state('delivery')
     if Spree::Config[:auto_capture]
       @ppx_response = @gateway.setup_purchase(opts[:money], opts)
     else
@@ -56,7 +58,6 @@ CheckoutController.class_eval do
     gateway = paypal_gateway
 
     @ppx_details = gateway.details_for params[:token]
-
     if @ppx_details.success?
       # now save the updated order info
 
@@ -134,7 +135,6 @@ CheckoutController.class_eval do
     load_order
 
     @order.update_attributes(params[:order])
-
     if @order.invalid?
       redirect_to edit_order_url(@order), :notice => @order.errors.full_messages
     elsif !payment_method.preferred_no_shipping
@@ -396,7 +396,11 @@ CheckoutController.class_eval do
   def paypal_params
     params.slice(:payment_method_id, :token, :PayerID)
   end
-
+  
+  def reset_order_state(state)
+    @order.update_attribute(:state, state)
+  end
+  
   def forward_order_to(state)
     @order.reload
     until @order.state == state
@@ -406,7 +410,6 @@ CheckoutController.class_eval do
       end
     end
   end
-
 end
 
 
